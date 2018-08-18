@@ -29,9 +29,6 @@ def start_listening():
             # processing on it
             image_stream.seek(0)
             image = Image.open(image_stream)
-            
-            # Verify image is not corrupt
-            image.verify()
 
             # Save image
             image.save("my_image_{}.jpeg".format(time.time()), format = "jpeg")
