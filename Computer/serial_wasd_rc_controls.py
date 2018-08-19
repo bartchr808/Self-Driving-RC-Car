@@ -36,14 +36,19 @@ while True:
         arduino.write(green_on)
     if "w" in my_in:
         arduino.write(red_on)
+        time.sleep(2)
+        arduino.write(red_off)
+        arduino.write(green_on2)
+        time.sleep(0.1)
+        arduino.write(green_off2)
     elif "s" in my_in:
         arduino.write(green_on2)
     
     # Turn off forward/backward, then let the left/right direction stay for 0.5 seconds while it coasts
-    time.sleep(0.3)
+    time.sleep(5)
     arduino.write(red_off)
     arduino.write(green_off2)
-    time.sleep(0.5)
+    #time.sleep(2)
     arduino.write(blue_off)
     arduino.write(green_off)
 
