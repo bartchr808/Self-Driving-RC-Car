@@ -111,8 +111,7 @@ def send_command_arduino():
         # Avoid sending an already existing command order
         if (command_store.command != command_store.previous_command):
             command_store.previous_command = command_store.command
-            # TODO: See if I can remove the `+ 48` here and the `- 48` in the Arduino code
-            byte_command = chr(command_store.command.value + 48).encode()
+            byte_command = chr(command_store.command.value).encode()
             arduino.write(byte_command)
 
     arduino.close()

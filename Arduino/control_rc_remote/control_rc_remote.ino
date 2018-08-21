@@ -151,7 +151,7 @@ void loop() {
 
   // Get input
   if (Serial.available() > 0) {
-    currentCommand = (CommandTypes)(Serial.read() - 48);
+    currentCommand = (CommandTypes)(Serial.read());
     receivedInput = true;
   }
   
