@@ -1,54 +1,120 @@
-# Arduino modules
-import serial
-import time
-import pygame
+# Imports
+import serial, pygame, time
+from pygame.locals import *
+from enum import Enum
 
-# Constants
-# Left
-blue_on = bytes(b'2')
-blue_off = bytes(b'1')
-# Right
-green_on = bytes(b'4')
-green_off = bytes(b'3')
-# Forward
-red_on = bytes(b'6')
-red_off = bytes(b'5')
-# Backward
-green_on2 = bytes(b'8')
-green_off2 = bytes(b'7')
+class CommandTypes(Enum):
+    STOP = 0
+    FORWARD = 1
+    BACKWARD = 2
+    LEFT = 3
+    RIGHT = 4
+    FORWARD_LEFT = 13
+    FORWARD_RIGHT = 14
+    BACKWARD_LEFT = 23
+    BACKWARD_RIGHT = 24
 
-# Establish the connection on a specific port
-arduino = serial.Serial('/dev/cu.usbmodem1461', 9600)
-time.sleep(1)  # give the connection a second to settle
+class CommandStore:
+    def __init__(self):
+        self.should_continue = True
+        self.previous_command = -1
+        self.command = CommandTypes.STOP
 
-while True:
+def get_pygame_command(command_store):
+    for event in pygame.event.get():
+            # Press key on keyboard down
+            if (event.type == KEYDOWN):
+                keyinput = pygame.key.get_pressed()
 
-    arduino.write(blue_off)
-    arduino.write(green_off)
-    arduino.write(red_off)
-    arduino.write(green_off2)
+                # 2D Commands
+                if keyinput[pygame.K_UP] and keyinput[pygame.K_LEFT]:
+                    command_store.command = CommandTypes.FORWARD_LEFT
+                elif keyinput[pygame.K_UP] and keyinput[pygame.K_RIGHT]:
+                    command_store.command = CommandTypes.FORWARD_RIGHT
+                elif keyinput[pygame.K_DOWN] and keyinput[pygame.K_LEFT]:
+                    command_store.command = CommandTypes.BACKWARD_LEFT
+                elif keyinput[pygame.K_DOWN] and keyinput[pygame.K_RIGHT]:
+                    command_store.command = CommandTypes.BACKWARD_RIGHT
 
-    my_in = input("Next command: ")
+                # 1D Commands
+                elif keyinput[pygame.K_UP]:
+                    command_store.command = CommandTypes.FORWARD
+                elif keyinput[pygame.K_DOWN]:
+                    command_store.command = CommandTypes.BACKWARD
+                elif keyinput[pygame.K_LEFT]:
+                    command_store.command = CommandTypes.LEFT
+                elif keyinput[pygame.K_RIGHT]:
+                    command_store.command = CommandTypes.RIGHT
 
-    if "a" in my_in:
-        arduino.write(blue_on)
-    elif "d" in my_in:
-        arduino.write(green_on)
-    if "w" in my_in:
-        arduino.write(red_on)
-        time.sleep(2)
-        arduino.write(red_off)
-        arduino.write(green_on2)
-        time.sleep(0.1)
-        arduino.write(green_off2)
-    elif "s" in my_in:
-        arduino.write(green_on2)
+                # Exit
+                elif keyinput[pygame.K_q]:
+                    command_store.should_continue = False
+                    command_store.command = CommandTypes.STOP
+            
+            # Let go of keyboard key press
+            elif event.type == pygame.KEYUP:
+
+                # Single key
+                if (command_store.command == CommandTypes.FORWARD
+                or command_store.command == CommandTypes.BACKWARD
+                or command_store.command == CommandTypes.LEFT
+                or command_store.command == CommandTypes.RIGHT):
+                    command_store.command = CommandTypes.STOP
+
+                # `FORWARD_LEFT`
+                elif command_store.command == CommandTypes.FORWARD_LEFT:
+                    if event.key == pygame.K_LEFT:
+                        command_store.command = CommandTypes.FORWARD
+                    elif event.key == pygame.K_UP:
+                        command_store.command = CommandTypes.LEFT
+
+                # `FORWARD_RIGHT`
+                elif command_store.command == CommandTypes.FORWARD_RIGHT:
+                    if event.key == pygame.K_RIGHT:
+                        command_store.command = CommandTypes.FORWARD
+                    elif event.key == pygame.K_UP:
+                        command_store.command = CommandTypes.RIGHT
+
+                # `BACKWARD_LEFT`
+                elif command_store.command == CommandTypes.BACKWARD_LEFT:
+                    if event.key == pygame.K_LEFT:
+                        command_store.command = CommandTypes.BACKWARD
+                    elif event.key == pygame.K_DOWN:
+                        command_store.command = CommandTypes.LEFT
+
+                # `BACKWARD_RIGHT`
+                elif command_store.command == CommandTypes.BACKWARD_RIGHT:
+                    if event.key == pygame.K_RIGHT:
+                        command_store.command = CommandTypes.BACKWARD
+                    elif event.key == pygame.K_DOWN:
+                        command_store.command = CommandTypes.RIGHT
+                    
+    return command_store.command
+
+def setup_pygame():
+    (width, height) = (300, 300)
+    pygame.display.set_mode((width, height))
+    pygame.init()
+
+def send_command_arduino():
+    setup_pygame()
+
+    # Establish the connection
+    arduino = serial.Serial('/dev/cu.usbmodem1461', 9600, timeout = 1)
+    time.sleep(1)
+
+    command_store = CommandStore()
     
-    # Turn off forward/backward, then let the left/right direction stay for 0.5 seconds while it coasts
-    time.sleep(5)
-    arduino.write(red_off)
-    arduino.write(green_off2)
-    #time.sleep(2)
-    arduino.write(blue_off)
-    arduino.write(green_off)
+    while command_store.should_continue:
+        get_pygame_command(command_store)
+        
+        # Avoid sending an already existing command order
+        if (command_store.command != command_store.previous_command):
+            command_store.previous_command = command_store.command
+            byte_command = chr(command_store.command.value).encode()
+            arduino.write(byte_command)
 
+    arduino.close()
+
+if __name__ == "__main__":
+    send_command_arduino()
