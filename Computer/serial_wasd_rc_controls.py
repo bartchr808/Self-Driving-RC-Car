@@ -100,7 +100,7 @@ def send_command_arduino():
     setup_pygame()
 
     # Establish the connection
-    arduino = serial.Serial('/dev/cu.usbmodem1461', 9600, timeout = 1)
+    arduino = serial.Serial('/dev/cu.usbmodem1441', 9600, timeout = 1)
     time.sleep(1)
 
     command_store = CommandStore()
